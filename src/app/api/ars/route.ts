@@ -3,39 +3,37 @@ import { fetchJson, getEnvConfig } from '@/lib/fetchJson';
 
 // Interfaces para las respuestas de las APIs
 interface CriptoyaResponse {
-  tarjeta?: { venta?: number; value?: number }
-  cripto?: { venta?: number; value?: number }
-  blue?: { venta?: number; value?: number }
-  mep?: { venta?: number; value?: number }
-  ccl?: { venta?: number; value?: number }
+  tarjeta: number;
+  cripto: number;
+  blue?: number;
+  mep?: number;
+  ccl?: number;
 }
 
-interface DolarApiItem {
-  casa: string
-  venta: number
-  fechaActualizacion: string
+interface DolarApiResponse {
+  compra: number;
+  venta: number;
+  casa: string;
+  nombre: string;
+  moneda: string;
+  fechaActualizacion: string;
 }
 
-interface NormalizedResponse {
-  tarjeta: number
-  cripto: number
-  blue?: number
-  mep?: number
-  ccl?: number
-  provider: 'criptoya' | 'dolarapi'
-  updatedAt: string
+interface NormalizedArsResponse {
+  tarjeta: number;
+  cripto: number;
+  blue?: number;
+  mep?: number;
+  ccl?: number;
+  provider: string;
+  updatedAt: string;
 }
 
 // Cache simple en memoria
-let cache: { data: NormalizedResponse; timestamp: number } | null = null
-const CACHE_DURATION = 45 * 1000 // 45 segundos
+let cache: { data: NormalizedArsResponse; timestamp: number } | null = null;
+const CACHE_DURATION = 45 * 1000; // 45 segundos
 
-function extractValue(item: { venta?: number; value?: number } | undefined): number | undefined {
-  if (!item) return undefined
-  return item.venta ?? item.value
-}
-
-async function fetchFromCriptoya(): Promise<NormalizedResponse | null> {
+async function fetchFromCriptoya(): Promise<NormalizedArsResponse | null> {
   try {
     const data = await fetchJson<CriptoyaResponse>(
       'https://criptoya.com/api/dolar',
@@ -46,39 +44,29 @@ async function fetchFromCriptoya(): Promise<NormalizedResponse | null> {
       }
     );
     
-    const tarjeta = extractValue(data.tarjeta)
-    const cripto = extractValue(data.cripto)
-    
-    if (tarjeta === undefined || cripto === undefined) {
-      throw new Error('Missing required fields from Criptoya')
+    // Verificar que tenemos los campos requeridos
+    if (!data.tarjeta || !data.cripto) {
+      throw new Error('Missing required fields from Criptoya');
     }
     
-    const result: NormalizedResponse = {
-      tarjeta,
-      cripto,
+    return {
+      tarjeta: data.tarjeta,
+      cripto: data.cripto,
+      blue: data.blue,
+      mep: data.mep,
+      ccl: data.ccl,
       provider: 'criptoya',
       updatedAt: new Date().toISOString()
     }
-    
-    // Agregar campos opcionales si existen
-    const blue = extractValue(data.blue)
-    const mep = extractValue(data.mep)
-    const ccl = extractValue(data.ccl)
-    
-    if (blue !== undefined) result.blue = blue
-    if (mep !== undefined) result.mep = mep
-    if (ccl !== undefined) result.ccl = ccl
-    
-    return result
   } catch (error) {
     console.error('Error fetching from Criptoya:', error)
     return null
   }
 }
 
-async function fetchFromDolarApi(): Promise<NormalizedResponse | null> {
+async function fetchFromDolarApi(): Promise<NormalizedArsResponse | null> {
   try {
-    const data = await fetchJson<DolarApiItem[]>(
+    const data = await fetchJson<DolarApiResponse[]>(
       'https://dolarapi.com/v1/dolares',
       {
         headers: {
@@ -87,36 +75,27 @@ async function fetchFromDolarApi(): Promise<NormalizedResponse | null> {
       }
     );
     
-    // Mapear los tipos según los requisitos
-    const mapping: Record<string, keyof Omit<NormalizedResponse, 'provider' | 'updatedAt'>> = {
-      'tarjeta': 'tarjeta',
-      'cripto': 'cripto',
-      'blue': 'blue',
-      'bolsa': 'mep', // mep es MEP (Mercado Electrónico de Pagos)
-      'contadoconliqui': 'ccl'
+    // Buscar las cotizaciones que necesitamos
+    const tarjeta = data.find(d => d.casa === 'tarjeta');
+    const blue = data.find(d => d.casa === 'blue');
+    const mep = data.find(d => d.casa === 'mayorista'); // Aproximación
+    
+    if (!tarjeta) {
+      throw new Error('Tarjeta rate not found in DolarAPI response');
     }
     
-    const result: Partial<NormalizedResponse> = {
+    return {
+      tarjeta: tarjeta.venta,
+      cripto: blue?.venta || tarjeta.venta, // Fallback a tarjeta si no hay blue
+      blue: blue?.venta,
+      mep: mep?.venta,
+      ccl: undefined, // DolarAPI no tiene CCL
       provider: 'dolarapi',
-      updatedAt: new Date().toISOString()
-    }
-    
-    for (const item of data) {
-      const key = mapping[item.casa]
-      if (key && item.venta) {
-        ;(result as any)[key] = item.venta
-      }
-    }
-    
-    // Verificar que tenemos los campos requeridos
-    if (!result.tarjeta || !result.cripto) {
-      throw new Error('Missing required fields from DolarAPI')
-    }
-    
-    return result as NormalizedResponse
+      updatedAt: tarjeta.fechaActualizacion || new Date().toISOString()
+    };
   } catch (error) {
-    console.error('Error fetching from DolarAPI:', error)
-    return null
+    console.error('Error fetching from DolarAPI:', error);
+    return null;
   }
 }
 
@@ -130,7 +109,7 @@ export async function GET() {
       return NextResponse.json(cache.data)
     }
     
-    let data: NormalizedResponse | null = null;
+    let data: NormalizedArsResponse | null = null;
     
     // Usar el proveedor configurado primero
     if (config.ARS_PROVIDER === 'criptoya') {
