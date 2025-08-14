@@ -56,14 +56,16 @@ interface CriptoyaResponse {
   };
 }
 
-interface DolarApiResponse {
-  compra: number;
-  venta: number;
+interface DolarApiItem {
+  moneda: string;
   casa: string;
   nombre: string;
-  moneda: string;
+  compra: number;
+  venta: number;
   fechaActualizacion: string;
 }
+
+type DolarApiResponse = DolarApiItem[];
 
 interface NormalizedArsResponse {
   tarjeta: number;
@@ -116,7 +118,7 @@ async function fetchFromCriptoya(): Promise<NormalizedArsResponse | null> {
 
 async function fetchFromDolarApi(): Promise<NormalizedArsResponse | null> {
   try {
-    const data = await fetchJson<DolarApiResponse[]>(
+    const data = await fetchJson<DolarApiResponse>(
       'https://dolarapi.com/v1/dolares',
       {
         headers: {
@@ -128,20 +130,22 @@ async function fetchFromDolarApi(): Promise<NormalizedArsResponse | null> {
     // Buscar las cotizaciones que necesitamos
     const tarjeta = data.find(d => d.casa === 'tarjeta');
     const blue = data.find(d => d.casa === 'blue');
-    const mep = data.find(d => d.casa === 'mayorista'); // Aproximación
+    const bolsa = data.find(d => d.casa === 'bolsa'); // MEP aproximado
+    const ccl = data.find(d => d.casa === 'contadoconliqui');
+    const cripto = data.find(d => d.casa === 'cripto');
     
     if (!tarjeta) {
-      throw new Error('Tarjeta rate not found in DolarAPI response');
+      throw new Error('Missing required tarjeta data from DolarAPI');
     }
     
     return {
       tarjeta: tarjeta.venta,
-      cripto: blue?.venta || tarjeta.venta, // Fallback a tarjeta si no hay blue
       blue: blue?.venta,
-      mep: mep?.venta,
-      ccl: undefined, // DolarAPI no tiene CCL
+      mep: bolsa?.venta,
+      cripto: cripto?.venta || blue?.venta || tarjeta.venta,
+      ccl: ccl?.venta,
       provider: 'dolarapi',
-      updatedAt: tarjeta.fechaActualizacion || new Date().toISOString()
+      updatedAt: new Date(tarjeta.fechaActualizacion).toISOString()
     };
   } catch (error) {
     console.error('Error fetching from DolarAPI:', error);
