@@ -12,6 +12,8 @@ Conversor de monedas en tiempo real que convierte Soles Peruanos (PEN) a Dólare
 - **Interfaz moderna**: shadcn/ui + Tailwind CSS + Framer Motion
 - **Responsive**: Diseño adaptable a móviles y desktop
 
+
+
 ## 🛠 Tecnologías
 
 - **Framework**: Next.js 14 (App Router)
