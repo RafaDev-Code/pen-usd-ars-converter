@@ -156,6 +156,55 @@ pnpm build
 - ✅ **Headers de seguridad**: User-Agent personalizado
 - ✅ **Manejo de errores**: Fallbacks y retry automático
 
+## 🚀 Deploy en Vercel
+
+### Configuración Automática
+
+1. **Conectar repositorio**: Importa el proyecto desde GitHub/GitLab/Bitbucket
+2. **Variables de entorno**: Configura en Project Settings → Environment Variables:
+   ```
+   EXCHANGE_API_BASE=https://open.er-api.com/v6
+   ARS_PROVIDER=criptoya
+   ```
+3. **Configuración de ramas**:
+   - `main` → Production deployment
+   - `dev` → Preview deployment
+
+### Pasos Manuales
+
+1. **Fork/Clone** este repositorio
+2. **Crear proyecto** en [Vercel Dashboard](https://vercel.com/dashboard)
+3. **Importar repositorio** y configurar:
+   - Framework Preset: `Next.js`
+   - Root Directory: `./`
+   - Build Command: `pnpm build` (automático)
+   - Output Directory: `.next` (automático)
+4. **Configurar variables de entorno** en Project Settings
+5. **Deploy**: Automático en cada push a `main`
+
+### Limitaciones
+
+#### 🌐 **Fuentes de Datos**
+- **USD/PEN**: [ExchangeRate-API](https://exchangerate-api.com) (gratuita, sin API key)
+- **ARS**: [Criptoya](https://criptoya.com) (primaria) + [DolarAPI](https://dolarapi.com) (fallback)
+- **Disponibilidad**: Dependiente de APIs externas (99%+ uptime típico)
+
+#### ⚡ **Rendimiento**
+- **Cache**: 30-45 segundos por endpoint
+- **Latencia**: ~200-500ms (APIs externas + Vercel Edge)
+- **Límites**: Sin límites de rate en APIs gratuitas usadas
+- **Regiones**: Auto-scaling global (Vercel Edge Network)
+
+#### 📊 **Precisión**
+- **Forex**: Datos institucionales (ExchangeRate-API)
+- **ARS**: Mercado informal argentino (puede variar vs. oficial)
+- **Actualización**: Cada 30-60 segundos según disponibilidad de APIs
+
+#### 🔧 **Técnicas**
+- **Timeout**: 10 segundos máximo por función serverless
+- **Fallbacks**: Sistema de respaldo automático para ARS
+- **Error handling**: Retry automático + mensajes de usuario
+
 ## 🤝 Contribuir
 
 1. Fork el proyecto
