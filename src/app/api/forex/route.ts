@@ -38,13 +38,19 @@ export async function GET() {
     }
 
     // Fetch from configured API (USD as base, PEN as target)
-    const url = `${config.EXCHANGE_API_BASE}/latest/USD`;
+    const url = `${config.exchangeApiBase}/latest/USD`;
     
-    const data = await fetchJson<ExchangeRateResponse>(url, {
+    const response = await fetchJson<ExchangeRateResponse>(url, {
       headers: {
         'User-Agent': 'PEN-USD-ARS-Converter/1.0'
       }
     });
+
+    if (response.error || !response.data) {
+      throw new Error(`Exchange API error: ${response.error || 'No data received'}`);
+    }
+
+    const data = response.data;
 
     if (data.result !== 'success') {
       throw new Error('API returned unsuccessful result');

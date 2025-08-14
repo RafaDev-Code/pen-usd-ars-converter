@@ -83,7 +83,7 @@ const CACHE_DURATION = 45 * 1000; // 45 segundos
 
 async function fetchFromCriptoya(): Promise<NormalizedArsResponse | null> {
   try {
-    const data = await fetchJson<CriptoyaResponse>(
+    const response = await fetchJson<CriptoyaResponse>(
       'https://criptoya.com/api/dolar',
       {
         headers: {
@@ -91,6 +91,12 @@ async function fetchFromCriptoya(): Promise<NormalizedArsResponse | null> {
         }
       }
     );
+    
+    if (response.error || !response.data) {
+      throw new Error(`Criptoya API error: ${response.error || 'No data received'}`);
+    }
+    
+    const data = response.data;
     
     // Verificar que tenemos los campos requeridos
     if (!data.tarjeta?.price || !data.cripto?.usdt?.ask) {
@@ -118,7 +124,7 @@ async function fetchFromCriptoya(): Promise<NormalizedArsResponse | null> {
 
 async function fetchFromDolarApi(): Promise<NormalizedArsResponse | null> {
   try {
-    const data = await fetchJson<DolarApiResponse>(
+    const response = await fetchJson<DolarApiResponse>(
       'https://dolarapi.com/v1/dolares',
       {
         headers: {
@@ -126,6 +132,12 @@ async function fetchFromDolarApi(): Promise<NormalizedArsResponse | null> {
         }
       }
     );
+    
+    if (response.error || !response.data) {
+      throw new Error(`DolarAPI error: ${response.error || 'No data received'}`);
+    }
+    
+    const data = response.data;
     
     // Buscar las cotizaciones que necesitamos
     const tarjeta = data.find(d => d.casa === 'tarjeta');
