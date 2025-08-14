@@ -178,7 +178,7 @@ export async function GET() {
     let data: NormalizedArsResponse | null = null;
     
     // Usar el proveedor configurado primero
-    if (config.ARS_PROVIDER === 'criptoya') {
+    if (config.arsProvider === 'criptoya') {
       data = await fetchFromCriptoya();
       
       // Si falla, usar DolarAPI como fallback

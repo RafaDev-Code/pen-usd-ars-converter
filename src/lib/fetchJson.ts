@@ -6,10 +6,10 @@ interface FetchJsonOptions {
   timeout?: number
   headers?: Record<string, string>
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-  body?: any
+  body?: unknown
 }
 
-interface FetchJsonResponse<T = any> {
+interface FetchJsonResponse<T = unknown> {
   data: T | null
   error: string | null
   status: number
@@ -47,7 +47,7 @@ export async function fetchWithTimeout(
 /**
  * Safe JSON parsing with error handling
  */
-export function safeJsonParse<T = any>(text: string): { data: T | null; error: string | null } {
+export function safeJsonParse<T = unknown>(text: string): { data: T | null; error: string | null } {
   try {
     const data = JSON.parse(text) as T
     return { data, error: null }
@@ -62,7 +62,7 @@ export function safeJsonParse<T = any>(text: string): { data: T | null; error: s
 /**
  * Complete fetch utility with JSON parsing, timeout, and error handling
  */
-export async function fetchJson<T = any>(
+export async function fetchJson<T = unknown>(
   url: string, 
   options: FetchJsonOptions = {}
 ): Promise<FetchJsonResponse<T>> {

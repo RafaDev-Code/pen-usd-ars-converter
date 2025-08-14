@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchJson, validateEnvVar, getEnvConfig } from '@/lib/fetchJson';
+import { fetchJson, getEnvConfig } from '@/lib/fetchJson';
 
 interface ExchangeRateResponse {
   result: string;

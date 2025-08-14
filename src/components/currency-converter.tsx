@@ -24,7 +24,6 @@ const formSchema = z.object({
     )
     .refine(
       (val) => {
-        const num = Number(val)
         const decimals = val.split('.')[1]
         return !decimals || decimals.length <= 2
       },
