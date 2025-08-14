@@ -18,7 +18,7 @@ interface ExchangeRateResponse {
 }
 
 interface ForexResponse {
-  usd: number;
+  rate: number;
   provider: string;
   updatedAt: string;
 }
@@ -66,7 +66,7 @@ export async function GET() {
     const usdRate = 1 / penRate;
 
     const result: ForexResponse = {
-      usd: usdRate,
+      rate: usdRate,
       provider: 'open.er-api.com',
       updatedAt: data.time_last_update_utc
     };
