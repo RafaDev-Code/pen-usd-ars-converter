@@ -1,36 +1,169 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PEN → USD / ARS Converter
 
-## Getting Started
+Conversor de monedas en tiempo real que convierte Soles Peruanos (PEN) a Dólares Americanos (USD) y Pesos Argentinos (ARS) con múltiples tipos de cambio.
 
-First, run the development server:
+## 🚀 Características
 
+- **Conversión PEN → USD**: Tasas en tiempo real desde APIs externas
+- **Múltiples tasas ARS**: Tarjeta, Cripto, Blue, MEP, CCL
+- **Validación de formularios**: Con Zod y React Hook Form
+- **Estados de carga y error**: Manejo completo de estados
+- **Cache inteligente**: 45-60 segundos para optimizar rendimiento
+- **Interfaz moderna**: shadcn/ui + Tailwind CSS + Framer Motion
+- **Responsive**: Diseño adaptable a móviles y desktop
+
+## 🛠 Tecnologías
+
+- **Framework**: Next.js 14 (App Router)
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Validación**: Zod + React Hook Form
+- **Estado**: React Query (@tanstack/react-query)
+- **Animaciones**: Framer Motion
+- **Iconos**: Lucide React
+- **TypeScript**: Tipado completo
+
+## 📋 Requisitos Previos
+
+- Node.js 18+ 
+- pnpm (recomendado) o npm
+
+## 🚀 Instalación y Configuración
+
+### 1. Clonar el repositorio
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd pen-usd-ars-converter
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Instalar dependencias
+```bash
+pnpm install
+# o
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Configurar variables de entorno
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Edita `.env.local` con tus configuraciones:
 
-## Learn More
+```env
+# API Configuration
+EXCHANGE_API_BASE=https://open.er-api.com/v6
 
-To learn more about Next.js, take a look at the following resources:
+# ARS Provider (criptoya o dolarapi)
+ARS_PROVIDER=criptoya
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Development settings
+NODE_ENV=development
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Ejecutar en desarrollo
+```bash
+pnpm dev
+# o
+npm run dev
+```
 
-## Deploy on Vercel
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🌐 Variables de Entorno
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Descripción | Valor por Defecto | Requerida |
+|----------|-------------|-------------------|----------|
+| `EXCHANGE_API_BASE` | URL base para API de cambio PEN→USD | `https://open.er-api.com/v6` | No |
+| `ARS_PROVIDER` | Proveedor principal para tasas ARS | `criptoya` | No |
+| `NODE_ENV` | Entorno de ejecución | `development` | No |
+| `NEXT_PUBLIC_APP_URL` | URL pública de la aplicación | `http://localhost:3000` | No |
+
+## 🔌 APIs Utilizadas
+
+### PEN → USD
+- **Principal**: [open.er-api.com](https://open.er-api.com) (gratuita)
+- **Endpoint**: `/api/forex`
+- **Cache**: 60 segundos
+
+### Tasas ARS
+- **Principal**: [criptoya.com](https://criptoya.com/api/dolar)
+- **Fallback**: [dolarapi.com](https://dolarapi.com/v1/dolares)
+- **Endpoint**: `/api/ars`
+- **Cache**: 45 segundos
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── ars/route.ts      # Endpoint tasas ARS
+│   │   └── forex/route.ts    # Endpoint PEN→USD
+│   ├── layout.tsx            # Layout principal
+│   └── page.tsx              # Página principal
+├── components/
+│   ├── currency-converter.tsx # Componente principal
+│   ├── providers/            # Providers de React Query
+│   └── ui/                   # Componentes shadcn/ui
+├── hooks/
+│   └── use-exchange-rates.ts # Hooks de React Query
+└── lib/
+    ├── currency-formatter.ts # Utilidades de formato
+    ├── fetchJson.ts         # Helper HTTP con timeout
+    └── utils.ts             # Utilidades generales
+```
+
+## 🔧 Scripts Disponibles
+
+```bash
+# Desarrollo
+pnpm dev
+
+# Build para producción
+pnpm build
+
+# Ejecutar build de producción
+pnpm start
+
+# Linting
+pnpm lint
+
+# Agregar componentes shadcn/ui
+npx shadcn@latest add [component-name]
+```
+
+## 🚀 Despliegue
+
+### Vercel (Recomendado)
+1. Conecta tu repositorio a [Vercel](https://vercel.com)
+2. Configura las variables de entorno en el dashboard
+3. Despliega automáticamente
+
+### Otras plataformas
+```bash
+# Build para producción
+pnpm build
+
+# Los archivos estáticos estarán en .next/
+```
+
+## 🔒 Seguridad
+
+- ✅ **No exposición de claves**: Todas las llamadas externas pasan por `/api/*`
+- ✅ **Validación de entrada**: Zod para validar datos del formulario
+- ✅ **Timeout de requests**: 5 segundos máximo por llamada
+- ✅ **Headers de seguridad**: User-Agent personalizado
+- ✅ **Manejo de errores**: Fallbacks y retry automático
+
+## 🤝 Contribuir
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -m 'feat: nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.

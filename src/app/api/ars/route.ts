@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server';
+import { fetchJson, getEnvConfig } from '@/lib/fetchJson';
 
+// Interfaces para las respuestas de las APIs
 interface CriptoyaResponse {
   tarjeta?: { venta?: number; value?: number }
   cripto?: { venta?: number; value?: number }
@@ -27,41 +29,22 @@ interface NormalizedResponse {
 // Cache simple en memoria
 let cache: { data: NormalizedResponse; timestamp: number } | null = null
 const CACHE_DURATION = 45 * 1000 // 45 segundos
-const REQUEST_TIMEOUT = 5000 // 5 segundos
 
 function extractValue(item: { venta?: number; value?: number } | undefined): number | undefined {
   if (!item) return undefined
   return item.venta ?? item.value
 }
 
-async function fetchWithTimeout(url: string, timeout: number): Promise<Response> {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeout)
-  
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'PEN-USD-ARS-Converter/1.0'
-      }
-    })
-    clearTimeout(timeoutId)
-    return response
-  } catch (error) {
-    clearTimeout(timeoutId)
-    throw error
-  }
-}
-
 async function fetchFromCriptoya(): Promise<NormalizedResponse | null> {
   try {
-    const response = await fetchWithTimeout('https://criptoya.com/api/dolar', REQUEST_TIMEOUT)
-    
-    if (!response.ok) {
-      throw new Error(`Criptoya API error: ${response.status}`)
-    }
-    
-    const data: CriptoyaResponse = await response.json()
+    const data = await fetchJson<CriptoyaResponse>(
+      'https://criptoya.com/api/dolar',
+      {
+        headers: {
+          'User-Agent': 'PEN-USD-ARS-Converter/1.0'
+        }
+      }
+    );
     
     const tarjeta = extractValue(data.tarjeta)
     const cripto = extractValue(data.cripto)
@@ -95,13 +78,14 @@ async function fetchFromCriptoya(): Promise<NormalizedResponse | null> {
 
 async function fetchFromDolarApi(): Promise<NormalizedResponse | null> {
   try {
-    const response = await fetchWithTimeout('https://dolarapi.com/v1/dolares', REQUEST_TIMEOUT)
-    
-    if (!response.ok) {
-      throw new Error(`DolarAPI error: ${response.status}`)
-    }
-    
-    const data: DolarApiItem[] = await response.json()
+    const data = await fetchJson<DolarApiItem[]>(
+      'https://dolarapi.com/v1/dolares',
+      {
+        headers: {
+          'User-Agent': 'PEN-USD-ARS-Converter/1.0'
+        }
+      }
+    );
     
     // Mapear los tipos según los requisitos
     const mapping: Record<string, keyof Omit<NormalizedResponse, 'provider' | 'updatedAt'>> = {
@@ -138,22 +122,39 @@ async function fetchFromDolarApi(): Promise<NormalizedResponse | null> {
 
 export async function GET() {
   try {
+    // Validar variables de entorno
+    const config = getEnvConfig();
+    
     // Verificar cache
     if (cache && Date.now() - cache.timestamp < CACHE_DURATION) {
       return NextResponse.json(cache.data)
     }
     
-    // Intentar con Criptoya primero
-    let data = await fetchFromCriptoya()
+    let data: NormalizedResponse | null = null;
     
-    // Si falla, usar DolarAPI como fallback
-    if (!data) {
-      data = await fetchFromDolarApi()
+    // Usar el proveedor configurado primero
+    if (config.ARS_PROVIDER === 'criptoya') {
+      data = await fetchFromCriptoya();
+      
+      // Si falla, usar DolarAPI como fallback
+      if (!data) {
+        console.log('Criptoya failed, trying DolarAPI as fallback');
+        data = await fetchFromDolarApi();
+      }
+    } else {
+      // Si está configurado dolarapi o cualquier otro valor
+      data = await fetchFromDolarApi();
+      
+      // Si falla, usar Criptoya como fallback
+      if (!data) {
+        console.log('DolarAPI failed, trying Criptoya as fallback');
+        data = await fetchFromCriptoya();
+      }
     }
     
     if (!data) {
       return NextResponse.json(
-        { error: 'Unable to fetch exchange rates from any provider' },
+        { error: 'Unable to fetch ARS exchange rates from any provider' },
         { status: 503 }
       )
     }
