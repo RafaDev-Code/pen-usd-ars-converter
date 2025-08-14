@@ -3,11 +3,57 @@ import { fetchJson, getEnvConfig } from '@/lib/fetchJson';
 
 // Interfaces para las respuestas de las APIs
 interface CriptoyaResponse {
-  tarjeta: number;
-  cripto: number;
-  blue?: number;
-  mep?: number;
-  ccl?: number;
+  tarjeta: {
+    price: number;
+    variation: number;
+    timestamp: number;
+  };
+  blue: {
+    ask: number;
+    bid: number;
+    variation: number;
+    timestamp: number;
+  };
+  cripto: {
+    ccb: {
+      ask: number;
+      bid: number;
+      variation: number;
+      timestamp: number;
+    };
+    usdt: {
+      ask: number;
+      bid: number;
+      variation: number;
+      timestamp: number;
+    };
+    usdc: {
+      ask: number;
+      bid: number;
+      variation: number;
+      timestamp: number;
+    };
+  };
+  mep?: {
+    al30?: {
+      "24hs": { price: number; variation: number; timestamp: number };
+      ci: { price: number; variation: number; timestamp: number };
+    };
+    gd30?: {
+      "24hs": { price: number; variation: number; timestamp: number };
+      ci: { price: number; variation: number; timestamp: number };
+    };
+  };
+  ccl?: {
+    al30?: {
+      "24hs": { price: number; variation: number; timestamp: number };
+      ci: { price: number; variation: number; timestamp: number };
+    };
+    gd30?: {
+      "24hs": { price: number; variation: number; timestamp: number };
+      ci: { price: number; variation: number; timestamp: number };
+    };
+  };
 }
 
 interface DolarApiResponse {
@@ -45,22 +91,26 @@ async function fetchFromCriptoya(): Promise<NormalizedArsResponse | null> {
     );
     
     // Verificar que tenemos los campos requeridos
-    if (!data.tarjeta || !data.cripto) {
+    if (!data.tarjeta?.price || !data.cripto?.usdt?.ask) {
       throw new Error('Missing required fields from Criptoya');
     }
     
+    // Extraer MEP y CCL (usar al30 como referencia principal)
+    const mepPrice = data.mep?.al30?.ci?.price || data.mep?.gd30?.ci?.price;
+    const cclPrice = data.ccl?.al30?.ci?.price || data.ccl?.gd30?.ci?.price;
+    
     return {
-      tarjeta: data.tarjeta,
-      cripto: data.cripto,
-      blue: data.blue,
-      mep: data.mep,
-      ccl: data.ccl,
+      tarjeta: data.tarjeta.price,
+      cripto: data.cripto.usdt.ask, // Usar USDT como referencia para cripto
+      blue: data.blue?.ask,
+      mep: mepPrice,
+      ccl: cclPrice,
       provider: 'criptoya',
-      updatedAt: new Date().toISOString()
-    }
+      updatedAt: new Date(data.tarjeta.timestamp * 1000).toISOString()
+    };
   } catch (error) {
-    console.error('Error fetching from Criptoya:', error)
-    return null
+    console.error('Error fetching from Criptoya:', error);
+    return null;
   }
 }
 
