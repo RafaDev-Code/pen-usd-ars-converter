@@ -21,10 +21,11 @@ interface ScanResult {
   items: ScanItem[];
   total: number;
   converted: {
-    USD: number;
-    ARS_tarjeta: number;
-    ARS_cripto: number;
-  };
+    USD: number | null;
+    ARS_tarjeta: number | null;
+    ARS_cripto: number | null;
+    ARS_mep?: number | null;
+  } | null;
   providers?: {
     forex: string;
     ars: string;

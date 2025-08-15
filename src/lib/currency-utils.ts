@@ -32,7 +32,7 @@ function round2(num: number): number {
 }
 
 // Helper getRate que lanza error si la tasa no es válida
-function getRate(rates: Record<string, any>, currency: string): number {
+function getRate(rates: Record<string, number | string | undefined>, currency: string): number {
   const rate = Number(rates?.[currency]);
   if (!Number.isFinite(rate) || rate <= 0) {
     throw new Error(`Invalid or missing exchange rate for ${currency}: ${rates?.[currency]}`);

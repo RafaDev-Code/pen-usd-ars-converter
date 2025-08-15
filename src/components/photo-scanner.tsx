@@ -82,7 +82,7 @@ export function PhotoScanner({ onScanComplete }: PhotoScannerProps) {
     return 0;
   };
 
-  const updateMonthlyCost = (cost: number) => {
+  const updateMonthlyCost = useCallback((cost: number) => {
     const currentMonth = new Date().toISOString().slice(0, 7);
     const currentTotal = getMonthlyTotal();
     const newTotal = currentTotal + cost;
@@ -92,7 +92,7 @@ export function PhotoScanner({ onScanComplete }: PhotoScannerProps) {
     localStorage.setItem('last_scan_cost', cost.toString());
     
     setMonthlyTotal(newTotal);
-  };
+  }, [setMonthlyTotal]);
 
   // Función para conversiones determinísticas post-scan
   const doConversions = async (scan: ScanMinimal) => {
@@ -842,9 +842,9 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
                   ) : (
                     <div className="flex flex-col">
                       <span>{formatCurrency(scanResult.converted?.USD || 0, 'USD')}</span>
-                      {scanResult.converted?.providers && (
+                      {scanResult.providers && (
                         <span className="text-xs text-green-600 mt-1">
-                          {scanResult.currency} → USD ({scanResult.converted.providers.forex})
+                          {scanResult.currency} → USD ({scanResult.providers.forex})
                         </span>
                       )}
                     </div>
@@ -867,9 +867,9 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
                   ) : (
                     <div className="flex flex-col">
                       <span>{formatCurrency(scanResult.converted?.ARS_tarjeta || 0, 'ARS')}</span>
-                      {scanResult.converted?.providers && scanResult.converted?.USD && (
+                      {scanResult.providers && scanResult.converted?.USD && (
                         <span className="text-xs text-purple-600 mt-1">
-                          USD {scanResult.converted?.USD} × tarjeta = ARS {scanResult.converted?.ARS_tarjeta} ({scanResult.converted.providers.ars})
+                          USD {scanResult.converted?.USD} × tarjeta = ARS {scanResult.converted?.ARS_tarjeta} ({scanResult.providers.ars})
                         </span>
                       )}
                     </div>
@@ -892,9 +892,9 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
                   ) : (
                     <div className="flex flex-col">
                       <span>{formatCurrency(scanResult.converted?.ARS_cripto || 0, 'ARS')}</span>
-                      {scanResult.converted?.providers && scanResult.converted?.USD && (
+                      {scanResult.providers && scanResult.converted?.USD && (
                         <span className="text-xs text-orange-600 mt-1">
-                          USD {scanResult.converted?.USD} × cripto = ARS {scanResult.converted?.ARS_cripto} ({scanResult.converted.providers.ars})
+                          USD {scanResult.converted?.USD} × cripto = ARS {scanResult.converted?.ARS_cripto} ({scanResult.providers.ars})
                         </span>
                       )}
                     </div>
