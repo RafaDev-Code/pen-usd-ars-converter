@@ -79,7 +79,7 @@ interface NormalizedArsResponse {
 
 // Cache simple en memoria
 let cache: { data: NormalizedArsResponse; timestamp: number } | null = null;
-const CACHE_DURATION = 45 * 1000; // 45 segundos
+const CACHE_DURATION = 60 * 1000; // 60 segundos
 
 async function fetchFromCriptoya(): Promise<NormalizedArsResponse | null> {
   try {

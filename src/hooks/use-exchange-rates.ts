@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 
 interface ForexResponse {
-  rate: number
+  rates: Record<string, number>
   provider: string
   updatedAt: string
+  base: string
 }
 
 interface ArsResponse {
@@ -16,17 +17,18 @@ interface ArsResponse {
   updatedAt: string
 }
 
-export function useForexRate() {
+export function useForexRate(base: string = 'PEN', symbols: string[] = ['USD']) {
   return useQuery<ForexResponse>({
-    queryKey: ['forex', 'pen-usd'],
+    queryKey: ['forex', base, symbols.join(',')],
     queryFn: async () => {
-      const response = await fetch('/api/forex')
+      const symbolsParam = symbols.join(',');
+      const response = await fetch(`/api/forex?base=${base}&symbols=${symbolsParam}`)
       if (!response.ok) {
-        throw new Error('Failed to fetch PEN to USD rate')
+        throw new Error(`Failed to fetch ${base} to ${symbols.join(',')} rates`)
       }
       return response.json()
     },
-    staleTime: 45 * 1000, // 45 segundos
+    staleTime: 60 * 1000, // 60 segundos
     refetchOnWindowFocus: false,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
@@ -43,7 +45,7 @@ export function useArsRates() {
       }
       return response.json()
     },
-    staleTime: 30 * 1000, // 30 segundos
+    staleTime: 60 * 1000, // 60 segundos
     refetchOnWindowFocus: false,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),

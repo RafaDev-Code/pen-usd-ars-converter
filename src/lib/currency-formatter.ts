@@ -19,8 +19,54 @@ export const formatters = {
   }),
 }
 
-export function formatCurrency(amount: number, currency: 'PEN' | 'USD' | 'ARS'): string {
-  return formatters[currency].format(amount)
+export function formatCurrency(amount: number, currency: string): string {
+  // Validate currency parameter
+  if (!currency || typeof currency !== 'string') {
+    return `${amount.toFixed(2)}`;
+  }
+  
+  // Try to use existing formatters first
+  const upperCurrency = currency.toUpperCase() as 'PEN' | 'USD' | 'ARS';
+  if (formatters[upperCurrency]) {
+    return formatters[upperCurrency].format(amount);
+  }
+  
+  // Fallback for other currencies
+  try {
+    const currencyMap: Record<string, string> = {
+      'EUR': 'EUR',
+      'GBP': 'GBP',
+      'BRL': 'BRL',
+      'CLP': 'CLP',
+      'COP': 'COP',
+      'MXN': 'MXN'
+    };
+
+    const currencyCode = currencyMap[upperCurrency] || upperCurrency;
+    
+    // Use appropriate locale based on currency
+    let locale = 'en-US';
+    if (currencyCode === 'EUR') {
+      locale = 'de-DE';
+    } else if (currencyCode === 'BRL') {
+      locale = 'pt-BR';
+    } else if (currencyCode === 'CLP' || currencyCode === 'COP') {
+      locale = 'es-CL';
+    } else if (currencyCode === 'MXN') {
+      locale = 'es-MX';
+    }
+
+    return new Intl.NumberFormat(locale, {
+       style: 'currency',
+       currency: currencyCode,
+       minimumFractionDigits: 2,
+       maximumFractionDigits: 2
+     }).format(amount);
+   } catch {
+     // Final fallback formatting if currency is not supported
+     const currencyDisplay = currency && typeof currency === 'string' ? currency.toUpperCase() : 'UNKNOWN';
+     return `${currencyDisplay} ${amount.toFixed(2)}`;
+   }
 }
 
 export function getTimeAgo(dateString: string): string {

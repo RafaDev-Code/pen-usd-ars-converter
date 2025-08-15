@@ -84,7 +84,7 @@ export function CurrencyConverter() {
   const [showMore, setShowMore] = useState(false)
   const [isCalculating, setIsCalculating] = useState(false)
   
-  const forexQuery = useForexRate()
+  const forexQuery = useForexRate('PEN', ['USD'])
   const arsQuery = useArsRates()
 
   const {
@@ -105,7 +105,7 @@ export function CurrencyConverter() {
       await new Promise(resolve => setTimeout(resolve, 300))
       
       const penAmount = Number(data.amount)
-      const usdAmount = penAmount * forexQuery.data.rate
+      const usdAmount = penAmount * forexQuery.data.rates.USD
       
       const conversionResult: ConversionResult = {
         penAmount,

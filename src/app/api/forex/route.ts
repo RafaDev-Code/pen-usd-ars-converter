@@ -18,27 +18,35 @@ interface ExchangeRateResponse {
 }
 
 interface ForexResponse {
-  rate: number;
+  rates: Record<string, number>;
   provider: string;
   updatedAt: string;
+  base: string;
 }
 
-// Cache for 60 seconds
-let cache: { data: ForexResponse; timestamp: number } | null = null;
+// Cache for 60 seconds with key-based storage
+const cache = new Map<string, { data: ForexResponse; timestamp: number }>();
 const CACHE_DURATION = 60 * 1000; // 60 seconds
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const base = searchParams.get('base') || 'PEN';
+  const symbols = searchParams.get('symbols')?.split(',') || ['USD'];
   try {
     // Validate environment variables
     const config = getEnvConfig();
     
+    // Create cache key
+    const cacheKey = `${base}-${symbols.join(',')}`;
+    
     // Check cache first
-    if (cache && Date.now() - cache.timestamp < CACHE_DURATION) {
-      return NextResponse.json(cache.data);
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return NextResponse.json(cached.data);
     }
 
-    // Fetch from configured API (USD as base, PEN as target)
-    const url = `${config.exchangeApiBase}/latest/USD`;
+    // Fetch from configured API with the requested base
+    const url = `${config.exchangeApiBase}/latest/${base}`;
     
     const response = await fetchJson<ExchangeRateResponse>(url, {
       headers: {
@@ -56,26 +64,32 @@ export async function GET() {
       throw new Error('API returned unsuccessful result');
     }
 
-    // Get PEN rate from USD base (need to invert to get PEN to USD)
-    const penRate = data.rates?.PEN;
-    if (!penRate) {
-      throw new Error('PEN rate not found in response');
+    // Extract requested rates
+    const rates: Record<string, number> = {};
+    for (const symbol of symbols) {
+      if (symbol === base) {
+        rates[symbol] = 1; // Base currency rate is always 1
+      } else {
+        const rate = data.rates?.[symbol];
+        if (!rate) {
+          throw new Error(`${symbol} rate not found in response`);
+        }
+        rates[symbol] = rate;
+      }
     }
 
-    // Convert PEN to USD (invert the rate)
-    const usdRate = 1 / penRate;
-
     const result: ForexResponse = {
-      rate: usdRate,
+      rates,
+      base,
       provider: 'open.er-api.com',
       updatedAt: data.time_last_update_utc
     };
 
     // Update cache
-    cache = {
+    cache.set(cacheKey, {
       data: result,
       timestamp: Date.now()
-    };
+    });
 
     return NextResponse.json(result);
   } catch (error) {
