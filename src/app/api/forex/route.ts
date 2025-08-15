@@ -64,18 +64,24 @@ export async function GET(request: Request) {
       throw new Error('API returned unsuccessful result');
     }
 
-    // Extract requested rates
+    // Extract requested rates with strict validation
     const rates: Record<string, number> = {};
     for (const symbol of symbols) {
       if (symbol === base) {
         rates[symbol] = 1; // Base currency rate is always 1
       } else {
         const rate = data.rates?.[symbol];
-        if (!rate) {
-          throw new Error(`${symbol} rate not found in response`);
+        const numericRate = Number(rate);
+        if (!Number.isFinite(numericRate) || numericRate <= 0) {
+          throw new Error(`Invalid or missing rate for ${symbol}: ${rate}`);
         }
-        rates[symbol] = rate;
+        rates[symbol] = numericRate;
       }
+    }
+
+    // Validación específica para USD - debe estar presente siempre
+    if (symbols.includes('USD') && (!rates.USD || !Number.isFinite(rates.USD) || rates.USD <= 0)) {
+      throw new Error('USD rate is required but missing or invalid');
     }
 
     const result: ForexResponse = {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { convertCurrencyRobust } from '@/lib/currency-utils';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -47,46 +48,29 @@ async function getForexRates(base: string, symbols: string[]) {
   }
 }
 
-// Unified conversion function that enforces PEN->USD->ARS logic
+// Wrapper para mantener compatibilidad con el handler existente
 async function convertCurrency(amount: number, fromCurrency: string) {
-  try {
-    // Step 1: Convert to USD if not already USD
-    let usdAmount = amount;
-    let forexData = null;
-    
-    if (fromCurrency !== 'USD') {
-      const forexResult = await getForexRates(fromCurrency, ['USD']);
-      if (forexResult.error) {
-        throw new Error(forexResult.error);
-      }
-      forexData = forexResult;
-      usdAmount = amount * forexResult.rates.USD;
-    }
-    
-    // Step 2: Get ARS rates
-    const arsResult = await getArsRates();
-    if (arsResult.error) {
-      throw new Error(arsResult.error);
-    }
-    
-    // Step 3: Convert USD to ARS
-    const result = {
-      USD: usdAmount,
-      ARS_tarjeta: usdAmount * arsResult.tarjeta,
-      ARS_cripto: usdAmount * arsResult.cripto,
-      providers: {
-        forex: forexData?.provider || 'direct',
-        ars: arsResult.provider,
-        updatedAt: arsResult.updatedAt
-      }
+  const result = await convertCurrencyRobust(amount, fromCurrency);
+  
+  if (!result.ok) {
+    // En lugar de retornar { error }, retornar formato consistente con valores null
+    // Esto evita que OpenAI genere valores 0 inventados
+    return {
+      USD: null,
+      ARS_tarjeta: null,
+      ARS_cripto: null,
+      providers: result.providers,
+      error: result.error // Incluir error para debugging
     };
-    
-    console.log(`Conversion: ${amount} ${fromCurrency} -> ${usdAmount} USD -> ARS_tarjeta: ${result.ARS_tarjeta}, ARS_cripto: ${result.ARS_cripto}`);
-    return result;
-  } catch (error) {
-    console.error('Currency conversion error:', error);
-    return { error: 'Failed to convert currency' };
   }
+  
+  // Retornar formato exitoso sin el campo 'ok'
+  return {
+    USD: result.USD,
+    ARS_tarjeta: result.ARS_tarjeta,
+    ARS_cripto: result.ARS_cripto,
+    providers: result.providers
+  };
 }
 
 async function getArsRates() {
@@ -273,7 +257,7 @@ export async function POST(request: NextRequest) {
               result = await getArsRates();
               break;
             case 'convert_currency':
-              result = await convertCurrency(parsedArgs.amount, parsedArgs.fromCurrency);
+              result = await convertCurrency(parsedArgs.amount, parsedArgs.from_currency);
               break;
             case 'detect_currency':
               const text = parsedArgs.text || '';

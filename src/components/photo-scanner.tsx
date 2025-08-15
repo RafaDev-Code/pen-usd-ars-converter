@@ -23,10 +23,11 @@ interface ScanResult {
   items: ScanItem[];
   total: number;
   converted: {
-    USD: number;
-    ARS_tarjeta: number;
-    ARS_cripto: number;
-  };
+    USD: number | null;
+    ARS_tarjeta: number | null;
+    ARS_cripto: number | null;
+    ARS_mep?: number | null;
+  } | null;
   providers?: {
     forex: string;
     ars: string;
@@ -39,6 +40,13 @@ interface ScanResult {
   model?: string;
   originalImage?: string;
   thumbnail?: string;
+}
+
+type ScanMinimal = { total: number; currency: string };
+
+// Helper para redondear a 2 decimales
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 interface PhotoScannerProps {
@@ -84,6 +92,53 @@ export function PhotoScanner({ onScanComplete }: PhotoScannerProps) {
     localStorage.setItem('last_scan_cost', cost.toString());
     
     setMonthlyTotal(newTotal);
+  };
+
+  // Función para conversiones determinísticas post-scan
+  const doConversions = async (scan: ScanMinimal) => {
+    try {
+      // Validar que scan.currency existe y es una string válida
+      if (!scan.currency || typeof scan.currency !== 'string') {
+        throw new Error('Currency is missing or invalid');
+      }
+      
+      const base = scan.currency.trim().toUpperCase();
+      
+      // 1) Forex (PEN/EUR/... → USD). Si ya es USD, rate=1
+      const fxJson = base === 'USD'
+        ? { rates: { USD: 1 }, provider: 'direct', updatedAt: new Date().toISOString() }
+        : await fetch(`/api/forex?base=${encodeURIComponent(base)}&symbols=USD`, { cache: 'no-store' }).then(r => r.json());
+
+      const rateUSD = Number(fxJson?.rates?.USD);
+      if (!Number.isFinite(rateUSD) || rateUSD <= 0) {
+        throw new Error('fx rate missing');
+      }
+
+      const usd = scan.total * rateUSD;
+
+      // 2) ARS (tarjeta/cripto/…)
+      const ars = await fetch('/api/ars', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+
+      const result = {
+        USD: round2(usd),
+        ARS_tarjeta: ars ? round2(usd * Number(ars.tarjeta)) : null,
+        ARS_cripto: ars ? round2(usd * Number(ars.cripto)) : null,
+        ARS_mep: ars?.mep ? round2(usd * Number(ars.mep)) : null,
+        providers: {
+          forex: fxJson.provider ?? 'unknown',
+          ars: ars?.provider ?? 'error',
+          updatedAt: ars?.updatedAt ?? fxJson.updatedAt
+        }
+      };
+
+      // 3) Actualizar estado de resultados
+      setScanResult(prev => prev ? { ...prev, converted: result } : null);
+      
+    } catch (error) {
+      console.error('Error in doConversions:', error);
+      // En caso de error, establecer converted como null
+      setScanResult(prev => prev ? { ...prev, converted: null } : null);
+    }
   };
 
   // Check for API key on component mount
@@ -192,6 +247,7 @@ INSTRUCCIONES CRÍTICAS:
    - Esta herramienta maneja automáticamente: moneda → USD → ARS
    - NO uses get_forex_rates ni get_ars_rates manualmente
    - La herramienta devuelve USD, ARS_tarjeta, ARS_cripto y providers
+6. Si el resultado de convert_currency es { ok:false }, no generes números. Reportá el error y pide reintento. Nunca rellenes con 0.
 
 FLUJO:
 1. Extrae texto completo del ticket
@@ -264,14 +320,14 @@ Responde en JSON con: currency_detected, confidence, cues, needs_confirmation, i
               type: 'function',
               function: {
                 name: 'convert_currency',
-                description: 'Convierte moneda usando la lógica correcta: moneda_base -> USD -> ARS. USAR ESTA HERRAMIENTA PARA TODAS LAS CONVERSIONES.',
+                description: 'Convierte monto a USD y ARS (tarjeta/cripto). No inventes valores: usa SOLO el output de esta función.',
                 parameters: {
                   type: 'object',
                   properties: {
                     amount: { type: 'number', description: 'Monto a convertir' },
-                    fromCurrency: { type: 'string', description: 'Moneda de origen (ej: PEN, USD, EUR)' }
+                    from_currency: { type: 'string', description: 'Moneda de origen (ej: PEN, USD, EUR)' }
                   },
-                  required: ['amount', 'fromCurrency']
+                  required: ['amount', 'from_currency']
                 }
               }
             },
@@ -439,13 +495,23 @@ Responde en JSON con: currency_detected, confidence, cues, needs_confirmation, i
         return;
       }
 
-      setScanResult(result);
-      onScanComplete?.(result);
+      // Establecer resultado base sin conversiones
+      const baseResult = { ...result, converted: null };
+      setScanResult(baseResult);
+      
+      // Ejecutar conversiones determinísticas
+      doConversions({ total: baseResult.total, currency: baseResult.currency })
+        .catch(() => {
+          // Si falla, mantener converted como null
+          console.log('Conversion failed, keeping converted as null');
+        });
+      
+      onScanComplete?.(baseResult);
 
       // Save to history if enabled
       if (saveHistory) {
         const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-        history.unshift(result);
+        history.unshift(baseResult);
         // Keep only last 10
         if (history.length > 10) {
           history.splice(10);
@@ -511,14 +577,14 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
               type: 'function',
               function: {
                 name: 'convert_currency',
-                description: 'Convierte moneda usando la lógica correcta: moneda_base -> USD -> ARS. USAR ESTA HERRAMIENTA PARA TODAS LAS CONVERSIONES.',
+                description: 'Convierte monto a USD y ARS (tarjeta/cripto). No inventes valores: usa SOLO el output de esta función.',
                 parameters: {
                   type: 'object',
                   properties: {
                     amount: { type: 'number', description: 'Monto a convertir' },
-                    fromCurrency: { type: 'string', description: 'Moneda de origen' }
+                    from_currency: { type: 'string', description: 'Moneda de origen' }
                   },
-                  required: ['amount', 'fromCurrency']
+                  required: ['amount', 'from_currency']
                 }
               }
             }
@@ -612,13 +678,23 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
         updateMonthlyCost(data.estimatedCost);
       }
       
-      setScanResult(result);
-      onScanComplete?.(result);
+      // Establecer resultado base sin conversiones
+      const baseResult = { ...result, converted: null };
+      setScanResult(baseResult);
+      
+      // Ejecutar conversiones determinísticas
+      doConversions({ total: baseResult.total, currency: baseResult.currency })
+        .catch(() => {
+          // Si falla, mantener converted como null
+          console.log('Conversion failed in currency confirmation, keeping converted as null');
+        });
+      
+      onScanComplete?.(baseResult);
       
       // Save to history
       if (saveHistory) {
         const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-        history.unshift(result);
+        history.unshift(baseResult);
         if (history.length > 10) {
           history.splice(10);
         }
@@ -753,19 +829,76 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
               <div className="bg-green-50 p-4 rounded-lg">
                 <div className="text-sm text-green-600 font-medium">USD</div>
                 <div className="text-xl font-bold text-green-900">
-                  {formatCurrency(scanResult.converted.USD, 'USD')}
+                  {scanResult.converted?.USD === null || scanResult.converted?.USD === 0 ? (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-gray-500">Sin datos</span>
+                      <button
+                        onClick={() => doConversions({ total: scanResult.total, currency: scanResult.currency })}
+                        className="text-xs bg-green-100 hover:bg-green-200 px-2 py-1 rounded text-green-700"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      <span>{formatCurrency(scanResult.converted?.USD || 0, 'USD')}</span>
+                      {scanResult.converted?.providers && (
+                        <span className="text-xs text-green-600 mt-1">
+                          {scanResult.currency} → USD ({scanResult.converted.providers.forex})
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">
                 <div className="text-sm text-purple-600 font-medium">ARS Tarjeta</div>
                 <div className="text-xl font-bold text-purple-900">
-                  {formatCurrency(scanResult.converted.ARS_tarjeta, 'ARS')}
+                  {scanResult.converted?.ARS_tarjeta === null || scanResult.converted?.ARS_tarjeta === 0 ? (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-gray-500">Sin datos</span>
+                      <button
+                        onClick={() => doConversions({ total: scanResult.total, currency: scanResult.currency })}
+                        className="text-xs bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded text-purple-700"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      <span>{formatCurrency(scanResult.converted?.ARS_tarjeta || 0, 'ARS')}</span>
+                      {scanResult.converted?.providers && scanResult.converted?.USD && (
+                        <span className="text-xs text-purple-600 mt-1">
+                          USD {scanResult.converted?.USD} × tarjeta = ARS {scanResult.converted?.ARS_tarjeta} ({scanResult.converted.providers.ars})
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="bg-orange-50 p-4 rounded-lg">
                 <div className="text-sm text-orange-600 font-medium">ARS Cripto</div>
                 <div className="text-xl font-bold text-orange-900">
-                  {formatCurrency(scanResult.converted.ARS_cripto, 'ARS')}
+                  {scanResult.converted?.ARS_cripto === null || scanResult.converted?.ARS_cripto === 0 ? (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-gray-500">Sin datos</span>
+                      <button
+                        onClick={() => doConversions({ total: scanResult.total, currency: scanResult.currency })}
+                        className="text-xs bg-orange-100 hover:bg-orange-200 px-2 py-1 rounded text-orange-700"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      <span>{formatCurrency(scanResult.converted?.ARS_cripto || 0, 'ARS')}</span>
+                      {scanResult.converted?.providers && scanResult.converted?.USD && (
+                        <span className="text-xs text-orange-600 mt-1">
+                          USD {scanResult.converted?.USD} × cripto = ARS {scanResult.converted?.ARS_cripto} ({scanResult.converted.providers.ars})
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

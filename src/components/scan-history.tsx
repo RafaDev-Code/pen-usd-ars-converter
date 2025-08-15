@@ -191,15 +191,15 @@ export function ScanHistory({ onSelectScan }: ScanHistoryProps) {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div className="bg-green-50 p-2 rounded text-center">
                   <div className="text-green-600 font-medium">USD</div>
-                  <div className="text-green-900">{formatCurrency(scan.converted.USD, 'USD')}</div>
+                  <div className="text-green-900">{formatCurrency(scan.converted?.USD || 0, 'USD')}</div>
                 </div>
                 <div className="bg-purple-50 p-2 rounded text-center">
                   <div className="text-purple-600 font-medium">ARS Tarjeta</div>
-                  <div className="text-purple-900">{formatCurrency(scan.converted.ARS_tarjeta, 'ARS')}</div>
+                  <div className="text-purple-900">{formatCurrency(scan.converted?.ARS_tarjeta || 0, 'ARS')}</div>
                 </div>
                 <div className="bg-orange-50 p-2 rounded text-center">
                   <div className="text-orange-600 font-medium">ARS Cripto</div>
-                  <div className="text-orange-900">{formatCurrency(scan.converted.ARS_cripto, 'ARS')}</div>
+                  <div className="text-orange-900">{formatCurrency(scan.converted?.ARS_cripto || 0, 'ARS')}</div>
                 </div>
               </div>
 
