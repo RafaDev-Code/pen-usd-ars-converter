@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { History, Trash2, Eye, Clock, Building2 } from 'lucide-react';
 import { formatCurrency, getTimeAgo } from '@/lib/currency-formatter';
 
@@ -28,6 +29,7 @@ interface ScanResult {
   };
   timestamp: string;
   imageThumb?: string;
+  imageSrc?: string;
 }
 
 interface ScanHistoryProps {
@@ -37,6 +39,9 @@ interface ScanHistoryProps {
 export function ScanHistory({ onSelectScan }: ScanHistoryProps) {
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [expandedScan, setExpandedScan] = useState<number | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerSrc, setViewerSrc] = useState<string | undefined>();
+  const [viewerTitle, setViewerTitle] = useState<string>('');
 
   useEffect(() => {
     loadHistory();
@@ -66,6 +71,14 @@ export function ScanHistory({ onSelectScan }: ScanHistoryProps) {
 
   const toggleExpanded = (index: number) => {
     setExpandedScan(expandedScan === index ? null : index);
+  };
+
+  const openViewer = (src: string | undefined, title: string) => {
+    if (src) {
+      setViewerSrc(src);
+      setViewerTitle(title);
+      setViewerOpen(true);
+    }
   };
 
   if (history.length === 0) {
@@ -140,11 +153,25 @@ export function ScanHistory({ onSelectScan }: ScanHistoryProps) {
                     <Eye className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => onSelectScan?.(scan)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openViewer(
+                        scan.imageSrc ?? scan.imageThumb,
+                        `Scan - ${formatCurrency(scan.total, scan.currency)}`
+                      );
+                    }}
                     variant="outline"
                     size="sm"
                   >
                     Ver
+                  </Button>
+                  <Button
+                    onClick={() => onSelectScan?.(scan)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    Abrir
                   </Button>
                   <Button
                     onClick={() => deleteScan(index)}
@@ -219,6 +246,26 @@ export function ScanHistory({ onSelectScan }: ScanHistoryProps) {
           ))}
         </div>
       </CardContent>
+
+      {/* Image Viewer Dialog */}
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{viewerTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center items-center max-h-[80vh] overflow-auto">
+            {viewerSrc ? (
+              <img
+                src={viewerSrc}
+                alt={viewerTitle}
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            ) : (
+              <p className="text-gray-500">No se encontró la imagen guardada.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

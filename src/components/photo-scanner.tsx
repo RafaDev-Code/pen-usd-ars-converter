@@ -34,6 +34,7 @@ interface ScanResult {
   };
   timestamp: string;
   imageThumb?: string;
+  imageSrc?: string;
   estimatedCost?: number;
   model?: string;
 }
@@ -406,6 +407,7 @@ Responde en JSON con: currency_detected, confidence, cues, needs_confirmation, i
         needs_confirmation: needsConfirmation,
         timestamp: new Date().toISOString(),
         imageThumb: thumbnail,
+        imageSrc: imageData,
         estimatedCost: data.estimatedCost,
         model: data.model
       };
@@ -582,6 +584,7 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
         needs_confirmation: false,
         timestamp: new Date().toISOString(),
         imageThumb: pendingResult.thumbnail,
+        imageSrc: pendingResult.originalImage,
         estimatedCost: data.estimatedCost,
         model: data.model
       };

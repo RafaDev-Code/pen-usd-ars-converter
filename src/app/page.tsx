@@ -31,6 +31,7 @@ interface ScanResult {
   };
   timestamp: string;
   imageThumb?: string;
+  imageSrc?: string;
 }
 
 export default function Home() {
