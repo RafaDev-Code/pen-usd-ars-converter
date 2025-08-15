@@ -17,11 +17,19 @@ async function getForexRates(base: string, symbols: string[]) {
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3001';
+    
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
     const response = await fetch(`${baseUrl}/api/forex?base=${base}&symbols=${symbolsParam}`, {
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -87,11 +95,19 @@ async function getArsRates() {
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3001';
+    
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
     const response = await fetch(`${baseUrl}/api/ars`, {
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -165,7 +181,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Make initial request to OpenAI
+    // Make initial request to OpenAI with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
     let response = await fetch(OPENAI_API_URL, {
       method: 'POST',
       headers: {
@@ -173,7 +192,10 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${userApiKey}`,
       },
       body: JSON.stringify(body),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     let data = await response.json();
     console.log('Initial OpenAI response:', JSON.stringify(data, null, 2));
@@ -197,6 +219,9 @@ export async function POST(request: NextRequest) {
         console.log('Max iterations reached, forcing final JSON response');
         
         // Force a final response without tools when max iterations reached
+        const finalController = new AbortController();
+        const finalTimeoutId = setTimeout(() => finalController.abort(), 15000); // 15 second timeout
+        
         const finalResponse = await fetch(OPENAI_API_URL, {
           method: 'POST',
           headers: {
@@ -216,7 +241,10 @@ export async function POST(request: NextRequest) {
             // Remove tools to force direct JSON response
             temperature: 0.1
           }),
+          signal: finalController.signal
         });
+        
+        clearTimeout(finalTimeoutId);
 
         if (!finalResponse.ok) {
           throw new Error(`OpenAI API error: ${finalResponse.status} ${finalResponse.statusText}`);
@@ -323,6 +351,9 @@ export async function POST(request: NextRequest) {
       ];
       
       // Make follow-up request with tool results
+      const followUpController = new AbortController();
+      const followUpTimeoutId = setTimeout(() => followUpController.abort(), 15000); // 15 second timeout
+      
       response = await fetch(OPENAI_API_URL, {
         method: 'POST',
         headers: {
@@ -333,7 +364,10 @@ export async function POST(request: NextRequest) {
           ...body,
           messages: currentMessages
         }),
+        signal: followUpController.signal
       });
+      
+      clearTimeout(followUpTimeoutId);
       
       data = await response.json();
       console.log(`Follow-up OpenAI response (iteration ${iterations}):`, JSON.stringify(data, null, 2));
@@ -358,8 +392,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responseWithCost);
   } catch (error) {
     console.error('OpenAI proxy error:', error);
+    
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return NextResponse.json(
+          { error: 'La solicitud tardó demasiado tiempo. Por favor, intente con una imagen más pequeña o simple.' },
+          { status: 504 }
+        );
+      }
+      
+      if (error.message.includes('fetch')) {
+        return NextResponse.json(
+          { error: 'Error de conexión. Verifique su conexión a internet e intente nuevamente.' },
+          { status: 503 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Error interno del servidor. Por favor, intente nuevamente.' },
       { status: 500 }
     );
   }

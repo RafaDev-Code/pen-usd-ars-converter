@@ -352,7 +352,19 @@ Responde en JSON con: currency_detected, confidence, cues, needs_confirmation, i
           setShowKeyModal(true);
           return;
         }
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        
+        // Handle specific error responses
+        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch {
+          // If we can't parse the error response, use the default message
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -560,7 +572,18 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
       });
       
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        // Handle specific error responses
+        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch {
+          // If we can't parse the error response, use the default message
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
