@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -128,9 +129,11 @@ export function ScanHistory({ onSelectScan }: ScanHistoryProps) {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   {scan.imageThumb && (
-                    <img
+                    <Image
                       src={scan.imageThumb}
                       alt="Thumbnail"
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded object-cover border"
                     />
                   )}
@@ -255,9 +258,11 @@ export function ScanHistory({ onSelectScan }: ScanHistoryProps) {
           </DialogHeader>
           <div className="flex justify-center items-center max-h-[80vh] overflow-auto">
             {viewerSrc ? (
-              <img
+              <Image
                 src={viewerSrc}
                 alt={viewerTitle}
+                width={800}
+                height={600}
                 className="max-w-full max-h-full object-contain rounded-lg"
               />
             ) : (

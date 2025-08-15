@@ -121,13 +121,18 @@ function formatCurrency(value: number, currency: string) {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(value);
-  } catch (error) {
+  } catch {
     return `${currency.toUpperCase()} ${value.toFixed(2)}`;
   }
 }
 
 // Calculate estimated cost based on usage
-function calculateCost(usage: any, model: string): number | null {
+interface Usage {
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+
+function calculateCost(usage: Usage | null, model: string): number | null {
   if (!usage || !usage.prompt_tokens || !usage.completion_tokens) {
     return null;
   }

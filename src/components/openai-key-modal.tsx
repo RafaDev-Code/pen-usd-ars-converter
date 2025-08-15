@@ -61,7 +61,7 @@ export function OpenAIKeyModal({ isOpen, onClose, onKeySaved }: OpenAIKeyModalPr
         setTestResult('error');
         setErrorMessage(error.error?.message || 'Error al probar la API key');
       }
-    } catch (err) {
+    } catch {
       setTestResult('error');
       setErrorMessage('Error de conexión');
     } finally {

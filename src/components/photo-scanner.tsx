@@ -37,6 +37,8 @@ interface ScanResult {
   imageSrc?: string;
   estimatedCost?: number;
   model?: string;
+  originalImage?: string;
+  thumbnail?: string;
 }
 
 interface PhotoScannerProps {
@@ -51,9 +53,8 @@ export function PhotoScanner({ onScanComplete }: PhotoScannerProps) {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [saveHistory, setSaveHistory] = useState(true);
   const [showCurrencyConfirmation, setShowCurrencyConfirmation] = useState(false);
-  const [pendingResult, setPendingResult] = useState<any>(null);
+  const [pendingResult, setPendingResult] = useState<ScanResult | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('');
-  const [lastCost, setLastCost] = useState<number | null>(null);
   const [monthlyTotal, setMonthlyTotal] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +83,6 @@ export function PhotoScanner({ onScanComplete }: PhotoScannerProps) {
     localStorage.setItem('monthly_cost_total', newTotal.toString());
     localStorage.setItem('last_scan_cost', cost.toString());
     
-    setLastCost(cost);
     setMonthlyTotal(newTotal);
   };
 
@@ -96,11 +96,6 @@ export function PhotoScanner({ onScanComplete }: PhotoScannerProps) {
     // Initialize cost tracking
     const currentTotal = getMonthlyTotal();
     setMonthlyTotal(currentTotal);
-    
-    const savedLastCost = localStorage.getItem('last_scan_cost');
-    if (savedLastCost) {
-      setLastCost(parseFloat(savedLastCost));
-    }
   });
 
   const resizeImage = (file: File): Promise<string> => {
@@ -155,7 +150,7 @@ export function PhotoScanner({ onScanComplete }: PhotoScannerProps) {
     });
   };
 
-  const processImage = async (file: File) => {
+  const processImage = useCallback(async (file: File) => {
     if (!apiKey) {
       setShowKeyModal(true);
       return;
@@ -452,7 +447,7 @@ Responde en JSON con: currency_detected, confidence, cues, needs_confirmation, i
     } finally {
       setIsScanning(false);
     }
-  };
+  }, [apiKey, saveHistory, onScanComplete, updateMonthlyCost]);
 
   const handleCurrencyConfirmation = async (confirmedCurrency: string) => {
     if (!pendingResult || !apiKey) return;
@@ -621,7 +616,7 @@ Extrae todos los ítems y usa convert_currency para las conversiones. Responde e
     if (file) {
       processImage(file);
     }
-  }, [apiKey, processImage]);
+  }, [processImage]);
 
   const handleUploadClick = () => {
     if (!apiKey) {
