@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { PWAUpdateNotification } from "@/components/pwa-update-notification";
 import { ArrowRightLeft } from "lucide-react";
 
 const geistSans = Geist({
@@ -15,8 +16,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PEN → USD / ARS Converter",
+  title: "Conversor de Monedas",
   description: "Conversor de monedas de Soles Peruanos a Dólares Americanos y Pesos Argentinos",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: "/icons/icon-192.svg",
+    apple: "/icons/icon-192.svg"
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Conversor"
+  }
+};
+
+export const viewport = {
+  themeColor: "#111111"
 };
 
 export default function RootLayout({
@@ -45,6 +60,7 @@ export default function RootLayout({
           <main className="min-h-screen">
             {children}
           </main>
+          <PWAUpdateNotification />
         </QueryProvider>
       </body>
     </html>
